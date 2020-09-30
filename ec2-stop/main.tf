@@ -36,6 +36,35 @@ resource "aws_lambda_function" "lambda_stop" {
 }
 
 # ----------------------------------------------------------------------------------------------------------------------
+# DEPLOY CLOUDWATCH EVENT
+# ----------------------------------------------------------------------------------------------------------------------
+
+resource "aws_cloudwatch_event_rule" "cw-rule" {
+  name                = "trigger-lambda-scheduler-${aws_lambda_function.lambda_stop.function_name}"
+  description         = "Trigger lambda scheduler"
+  schedule_expression = "cron(0 16 ? * MON-FRI *)"
+}
+
+resource "aws_cloudwatch_event_target" "cw-tg" {
+  arn  = aws_lambda_function.lambda_stop.arn
+  rule = aws_cloudwatch_event_rule.cw-rule.name
+}
+
+resource "aws_lambda_permission" "lambda-perm" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  principal     = "events.amazonaws.com"
+  function_name = aws_lambda_function.lambda_stop.function_name
+  source_arn    = aws_cloudwatch_event_rule.cw-rule.arn
+}
+
+# CLOUDWATCH LOG
+resource "aws_cloudwatch_log_group" "cw-lg" {
+  name              = "/aws/lambda/${aws_lambda_function.lambda_stop.function_name}"
+  retention_in_days = 14
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
 # CREATE AN IAM LAMBDA EXECUTION ROLE WHICH WILL BE ATTACHED TO THE FUNCTION
 # ----------------------------------------------------------------------------------------------------------------------
 
